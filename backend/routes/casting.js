@@ -31,6 +31,24 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get user's registrations (user only) - MUST BE BEFORE /:id route
+router.get('/user/registrations', auth, authorize('user'), async (req, res) => {
+  try {
+    const registrations = await Registration.find({ user: req.user.id })
+      .populate('ticket', 'title description category location date status images')
+      .sort({ createdAt: -1 });
+
+    res.json(registrations.map(reg => ({
+      _id: reg._id,
+      ticket: reg.ticket,
+      status: reg.status || 'pending',
+      registeredAt: reg.createdAt
+    })));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get single casting ticket
 router.get('/:id', async (req, res) => {
   try {
@@ -82,6 +100,7 @@ router.get('/:id/registrations', auth, authorize('casting', 'admin'), async (req
       phoneNumber: reg.phoneNumber,
       photos: reg.photos || [],
       videos: reg.videos || [],
+      status: reg.status || 'pending',
       registeredAt: reg.registeredAt || reg.createdAt
     })));
   } catch (error) {
@@ -247,6 +266,56 @@ router.delete('/:id', auth, authorize('casting', 'admin'), async (req, res) => {
 
     await ticket.deleteOne();
     res.json({ message: 'Ticket deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Approve registration (casting/admin only)
+router.patch('/registrations/:registrationId/approve', auth, authorize('casting', 'admin'), async (req, res) => {
+  try {
+    const registration = await Registration.findById(req.params.registrationId).populate('ticket');
+    
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+
+    const ticket = registration.ticket;
+    
+    // Only ticket creator or admin can approve registrations
+    if (ticket.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to approve this registration' });
+    }
+
+    registration.status = 'approved';
+    await registration.save();
+
+    res.json({ message: 'Registration approved successfully', registration });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Reject registration (casting/admin only)
+router.patch('/registrations/:registrationId/reject', auth, authorize('casting', 'admin'), async (req, res) => {
+  try {
+    const registration = await Registration.findById(req.params.registrationId).populate('ticket');
+    
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+
+    const ticket = registration.ticket;
+    
+    // Only ticket creator or admin can reject registrations
+    if (ticket.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to reject this registration' });
+    }
+
+    registration.status = 'rejected';
+    await registration.save();
+
+    res.json({ message: 'Registration rejected successfully', registration });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

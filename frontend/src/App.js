@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import CastingPage from './pages/CastingPage';
 import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
+import MyRegistrationsPage from './pages/MyRegistrationsPage';
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
@@ -22,6 +23,14 @@ function App() {
             element={
               <PrivateRoute>
                 <ProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/my-registrations"
+            element={
+              <PrivateRoute allowedRoles={['user']}>
+                <MyRegistrationsPage />
               </PrivateRoute>
             }
           />

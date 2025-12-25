@@ -179,6 +179,37 @@ const CastingPage = () => {
     }
   };
 
+  const handleApproveRegistration = async (registrationId) => {
+    try {
+      await axios.patch(`http://localhost:5001/api/casting/registrations/${registrationId}/approve`);
+      alert('Registration approved successfully');
+      // Refresh registrations
+      if (showRegistrations) {
+        const response = await axios.get(`http://localhost:5001/api/casting/${showRegistrations}/registrations`);
+        setRegistrations(Array.isArray(response.data) ? response.data : []);
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to approve registration');
+    }
+  };
+
+  const handleRejectRegistration = async (registrationId) => {
+    if (!window.confirm('Are you sure you want to reject this registration?')) {
+      return;
+    }
+    try {
+      await axios.patch(`http://localhost:5001/api/casting/registrations/${registrationId}/reject`);
+      alert('Registration rejected successfully');
+      // Refresh registrations
+      if (showRegistrations) {
+        const response = await axios.get(`http://localhost:5001/api/casting/${showRegistrations}/registrations`);
+        setRegistrations(Array.isArray(response.data) ? response.data : []);
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to reject registration');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <nav className="bg-white shadow-sm">
@@ -410,143 +441,232 @@ const CastingPage = () => {
                     View Registrations ({ticket.registeredUsers?.length || 0})
                   </button>
                 </div>
-                <div className="space-y-2">
-                  {showRegistrations === ticket._id && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <h3 className="font-semibold text-gray-900 mb-3">
-                        Registered Users ({registrations.length})
-                      </h3>
+                {showRegistrations === ticket._id && (
+                  <div className="mt-6 -mx-6 -mb-6 bg-gray-50 border-t border-gray-200">
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold text-gray-900">
+                          Registrations ({registrations.length})
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setShowRegistrations(null);
+                            setRegistrations([]);
+                          }}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          ✕ Close
+                        </button>
+                      </div>
                       {loadingRegistrations ? (
-                        <div className="text-center py-4">
+                        <div className="text-center py-8">
                           <div className="text-gray-600">Loading registrations...</div>
                         </div>
                       ) : registrations.length === 0 ? (
-                        <div className="text-center py-4 text-gray-500">
+                        <div className="text-center py-8 text-gray-500">
                           No users registered yet
                         </div>
                       ) : (
-                        <div className="space-y-4">
-                          {registrations.map((registeredUser, index) => (
-                            <div
-                              key={registeredUser._id || index}
-                              className="bg-white p-4 rounded border border-gray-200"
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex items-start gap-3">
-                                  {(() => {
-                                    // Get profile photo from nested user object or direct
-                                    const profilePhoto = registeredUser.user?.profilePhoto || registeredUser.profilePhoto;
-                                    const userName = registeredUser.user?.name || registeredUser.name || 'User';
-                                    
-                                    // Show profile photo if available, otherwise show initial
-                                    if (profilePhoto && profilePhoto.trim() !== '' && profilePhoto !== 'null') {
-                                      return (
-                                        <img
-                                          src={profilePhoto}
-                                          alt={`${userName}'s profile`}
-                                          className="w-16 h-16 rounded-full object-cover border-2 border-blue-300 shadow-md"
-                                          onError={(e) => {
-                                            // On error, replace with fallback avatar
-                                            e.target.style.display = 'none';
-                                            const fallback = e.target.nextElementSibling;
-                                            if (fallback) {
-                                              fallback.style.display = 'flex';
-                                            }
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">User</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Contact</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Media</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {registrations.map((registeredUser, index) => {
+                                const profilePhoto = registeredUser.user?.profilePhoto || registeredUser.profilePhoto;
+                                const userName = registeredUser.user?.name || registeredUser.name || 'User';
+                                const userLastName = registeredUser.user?.lastName || registeredUser.lastName || '';
+                                const userEmail = registeredUser.user?.email || registeredUser.email;
+                                const userDob = registeredUser.user?.dob || registeredUser.dob;
+                                const userAge = registeredUser.user?.age || registeredUser.age;
+                                const userAddress = registeredUser.user?.address || registeredUser.address;
+                                const phoneNumber = registeredUser.phoneNumber;
+                                const status = registeredUser.status || 'pending';
+                                const photos = registeredUser.photos || [];
+                                const videos = registeredUser.videos || [];
+                                
+                                return (
+                                  <tr key={registeredUser._id || index} className="hover:bg-gray-50">
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                      <div className="flex items-center gap-3">
+                                        {profilePhoto && profilePhoto.trim() !== '' && profilePhoto !== 'null' ? (
+                                          <img
+                                            src={profilePhoto}
+                                            alt={`${userName}'s profile`}
+                                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-300"
+                                            onError={(e) => {
+                                              e.target.style.display = 'none';
+                                              const fallback = e.target.nextElementSibling;
+                                              if (fallback) fallback.style.display = 'flex';
+                                            }}
+                                          />
+                                        ) : null}
+                                        <div
+                                          className={`w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center border-2 border-gray-300 ${profilePhoto && profilePhoto.trim() !== '' && profilePhoto !== 'null' ? 'hidden' : ''}`}
+                                        >
+                                          <span className="text-gray-600 font-semibold">
+                                            {userName.charAt(0).toUpperCase()}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-medium text-gray-900">
+                                            {userName} {userLastName}
+                                          </div>
+                                          {userDob && (
+                                            <div className="text-xs text-gray-500">
+                                              DOB: {new Date(userDob).toLocaleDateString()}
+                                            </div>
+                                          )}
+                                          {userAge && (
+                                            <div className="text-xs text-gray-500">
+                                              Age: {userAge}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div className="text-sm text-gray-900">{userEmail}</div>
+                                      <div className="text-sm text-gray-500">Phone: {phoneNumber}</div>
+                                      {userAddress && (
+                                        <div className="text-xs text-gray-400 mt-1">{userAddress}</div>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                      <div className="text-sm text-gray-600">
+                                        {photos.length > 0 && <span className="mr-2">📷 {photos.length}</span>}
+                                        {videos.length > 0 && <span>🎥 {videos.length}</span>}
+                                      </div>
+                                      {(photos.length > 0 || videos.length > 0) && (
+                                        <button
+                                          onClick={() => {
+                                            const modal = document.getElementById(`media-modal-${registeredUser._id}`);
+                                            if (modal) modal.classList.remove('hidden');
                                           }}
-                                        />
-                                      );
-                                    }
-                                    return null;
-                                  })()}
-                                  <div 
-                                    className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center border-2 border-gray-300 shadow-sm"
-                                    style={{ 
-                                      display: (registeredUser.user?.profilePhoto || registeredUser.profilePhoto) && 
-                                               (registeredUser.user?.profilePhoto || registeredUser.profilePhoto).trim() !== '' &&
-                                               (registeredUser.user?.profilePhoto || registeredUser.profilePhoto) !== 'null' 
-                                        ? 'none' : 'flex' 
-                                    }}
-                                  >
-                                    <span className="text-gray-600 text-lg font-semibold">
-                                      {(registeredUser.user?.name || registeredUser.name)?.charAt(0)?.toUpperCase() || 'U'}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <div className="font-medium text-gray-900">
-                                      {registeredUser.user?.name || registeredUser.name} {registeredUser.user?.lastName || registeredUser.lastName || ''}
-                                    </div>
-                                    <div className="text-sm text-gray-500">
-                                      {registeredUser.user?.email || registeredUser.email}
-                                    </div>
-                                    {(registeredUser.user?.dob || registeredUser.dob) && (
-                                      <div className="text-xs text-gray-400 mt-1">
-                                        DOB: {new Date(registeredUser.user?.dob || registeredUser.dob).toLocaleDateString()}
+                                          className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                        >
+                                          View Media
+                                        </button>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        status === 'approved' ? 'bg-green-100 text-green-800' :
+                                        status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                      }`}>
+                                        {status}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                      <div className="flex gap-2">
+                                        {status !== 'approved' && (
+                                          <button
+                                            onClick={() => handleApproveRegistration(registeredUser._id)}
+                                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                                          >
+                                            Approve
+                                          </button>
+                                        )}
+                                        {status !== 'rejected' && (
+                                          <button
+                                            onClick={() => handleRejectRegistration(registeredUser._id)}
+                                            className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                                          >
+                                            Reject
+                                          </button>
+                                        )}
                                       </div>
-                                    )}
-                                    <div className="text-sm text-gray-600 mt-1">
-                                      <span className="font-medium">Phone:</span> {registeredUser.phoneNumber}
-                                    </div>
-                                    {registeredUser.registeredAt && (
-                                      <div className="text-xs text-gray-400 mt-1">
-                                        Registered: {new Date(registeredUser.registeredAt).toLocaleDateString()}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Display Photos and Videos */}
-                              {((registeredUser.photos && registeredUser.photos.length > 0) || (registeredUser.videos && registeredUser.videos.length > 0)) && (
-                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                  {/* Display Photos */}
-                                  {(registeredUser.photos && registeredUser.photos.length > 0) && (
-                                    <div className="mb-3">
-                                      <div className="text-sm font-medium text-gray-700 mb-2">Uploaded Photos ({registeredUser.photos.length}):</div>
-                                      <div className="grid grid-cols-3 gap-2">
-                                        {registeredUser.photos.map((photo, photoIndex) => (
-                                          <div key={photoIndex} className="relative">
-                                            <img
-                                              src={photo}
-                                              alt={`Submission ${photoIndex + 1}`}
-                                              className="w-full h-24 object-cover rounded border cursor-pointer hover:opacity-80"
-                                              onClick={() => window.open(photo, '_blank')}
-                                            />
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Display Videos */}
-                                  {(registeredUser.videos && registeredUser.videos.length > 0) && (
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-700 mb-2">Uploaded Videos ({registeredUser.videos.length}):</div>
-                                      <div className="space-y-3">
-                                        {registeredUser.videos.map((video, videoIndex) => (
-                                          <div key={videoIndex} className="border rounded overflow-hidden bg-black">
-                                            <video
-                                              src={video}
-                                              controls
-                                              preload="metadata"
-                                              className="w-full h-64 object-contain"
-                                              style={{ maxHeight: '400px' }}
-                                            >
-                                              Your browser does not support the video tag.
-                                            </video>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+                
+                {/* Media Modals */}
+                {showRegistrations === ticket._id && registrations.map((registeredUser) => {
+                  const photos = registeredUser.photos || [];
+                  const videos = registeredUser.videos || [];
+                  if (photos.length === 0 && videos.length === 0) return null;
+                  
+                  return (
+                    <div
+                      key={`modal-${registeredUser._id}`}
+                      id={`media-modal-${registeredUser._id}`}
+                      className="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                      onClick={(e) => {
+                        if (e.target.id === `media-modal-${registeredUser._id}`) {
+                          e.target.classList.add('hidden');
+                        }
+                      }}
+                    >
+                      <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-xl font-semibold">
+                            Media from {registeredUser.user?.name || registeredUser.name}
+                          </h3>
+                          <button
+                            onClick={() => {
+                              const modal = document.getElementById(`media-modal-${registeredUser._id}`);
+                              if (modal) modal.classList.add('hidden');
+                            }}
+                            className="text-gray-500 hover:text-gray-700 text-2xl"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {photos.length > 0 && (
+                          <div className="mb-6">
+                            <h4 className="text-sm font-medium text-gray-700 mb-2">Photos ({photos.length})</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                              {photos.map((photo, photoIndex) => (
+                                <img
+                                  key={photoIndex}
+                                  src={photo}
+                                  alt={`Submission ${photoIndex + 1}`}
+                                  className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80"
+                                  onClick={() => window.open(photo, '_blank')}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {videos.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-2">Videos ({videos.length})</h4>
+                            <div className="space-y-3">
+                              {videos.map((video, videoIndex) => (
+                                <div key={videoIndex} className="border rounded overflow-hidden bg-black">
+                                  <video
+                                    src={video}
+                                    controls
+                                    preload="metadata"
+                                    className="w-full h-64 object-contain"
+                                  >
+                                    Your browser does not support the video tag.
+                                  </video>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
                 <button
                   onClick={() => handleDelete(ticket._id)}
                   className="w-full mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"

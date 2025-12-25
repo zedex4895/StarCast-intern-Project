@@ -23,7 +23,12 @@ const registrationSchema = new mongoose.Schema({
   videos: [{
     type: String, // Base64 encoded videos or URLs
     default: []
-  }]
+  }],
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  }
 }, {
   timestamps: true
 });
