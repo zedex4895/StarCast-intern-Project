@@ -71,15 +71,18 @@ const LandingPage = () => {
     }
 
     files.forEach((file) => {
-      if (file.size > 50 * 1024 * 1024) {
-        // 50MB limit
-        alert(`Video ${file.name} is too large. Maximum size is 50MB.`);
+      if (file.size > 15 * 1024 * 1024) {
+        // 15MB limit for better reliability
+        alert(`Video "${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please use a video under 15MB for reliable upload.`);
         return;
       }
 
       const reader = new FileReader();
       reader.onloadend = () => {
         setVideos((prev) => [...prev, reader.result]);
+      };
+      reader.onerror = () => {
+        alert(`Failed to read video "${file.name}". Please try a smaller file.`);
       };
       reader.readAsDataURL(file);
     });
@@ -130,9 +133,6 @@ const LandingPage = () => {
       (id) => id === user.id || id._id === user.id
     );
   };
-
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   return (
     <div className="min-h-screen bg-black">
@@ -292,7 +292,9 @@ const LandingPage = () => {
                       key={ticket._id}
                       className="relative h-[400px] w-[90%] sm:w-[85%] mx-auto group rounded-[1.5em] shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col justify-end p-6 bg-cover bg-center bg-no-repeat"
                       style={{
-                        backgroundImage: ticket.image
+                        backgroundImage: ticket.images && ticket.images.length > 0
+                          ? `url(${ticket.images[0]})`
+                          : ticket.image
                           ? `url(${ticket.image})`
                           : "linear-gradient(135deg,#444,#111)",
                       }}
@@ -442,52 +444,67 @@ const LandingPage = () => {
 
       {/* Registration Modal */}
       {showPhoneModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-semibold mb-4">
-              Register for Audition
-            </h2>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-6 max-w-2xl w-full mx-4 my-8 max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">
+                  Ready to Shine? ✨
+                </h2>
+                <p className="text-white/60 text-sm">Let's get you registered for this audition!</p>
+              </div>
+            </div>
             <form onSubmit={handlePhoneSubmit}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number *
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  📱 Your Phone Number *
                 </label>
                 <input
                   type="tel"
                   required
-                  placeholder="Enter your phone number"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., +91 98765 43210"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-all duration-300"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
+                  autoComplete="tel"
                 />
               </div>
 
               {/* Photos Upload */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Photos (Max 5, 5MB each)
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  📷 Your Best Shots (Max 5, 5MB each)
                 </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handlePhotoChange}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 border-dashed rounded-xl text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-red-600 file:text-white file:cursor-pointer hover:file:bg-red-700 transition-all duration-300"
+                  />
+                </div>
                 {photos.length > 0 && (
-                  <div className="mt-2 grid grid-cols-3 gap-2">
+                  <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {photos.map((photo, index) => (
-                      <div key={index} className="relative">
+                      <div key={index} className="relative group">
                         <img
                           src={photo}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-24 object-cover rounded border"
+                          className="w-full h-20 object-cover rounded-lg border border-white/20"
                         />
                         <button
                           type="button"
                           onClick={() => removePhoto(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                        ></button>
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg transition-all"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -495,30 +512,30 @@ const LandingPage = () => {
               </div>
 
               {/* Videos Upload */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Videos (Max 3, 50MB each)
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  🎬 Your Showreel (Max 3, 15MB each)
                 </label>
                 <input
                   type="file"
                   accept="video/*"
                   multiple
                   onChange={handleVideoChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 border-dashed rounded-xl text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-red-600 file:text-white file:cursor-pointer hover:file:bg-red-700 transition-all duration-300"
                 />
                 {videos.length > 0 && (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-3 space-y-3">
                     {videos.map((video, index) => (
-                      <div key={index} className="relative border rounded p-2">
+                      <div key={index} className="relative bg-black/50 rounded-xl p-2 border border-white/10">
                         <video
                           src={video}
                           controls
-                          className="w-full h-32 object-contain rounded"
+                          className="w-full h-32 object-contain rounded-lg"
                         />
                         <button
                           type="button"
                           onClick={() => removeVideo(index)}
-                          className="absolute top-3 right-3 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg transition-all"
                         >
                           ×
                         </button>
@@ -538,16 +555,26 @@ const LandingPage = () => {
                     setVideos([]);
                     setSelectedTicketId(null);
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  className="flex-1 px-4 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all duration-300 font-medium"
                 >
-                  Cancel
+                  Maybe Later
                 </button>
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-xl hover:from-red-700 hover:to-orange-600 hover:shadow-lg hover:shadow-red-500/25 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {uploading ? "Registering..." : "Register"}
+                  {uploading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Submitting...
+                    </span>
+                  ) : (
+                    "🚀 Submit Application"
+                  )}
                 </button>
               </div>
             </form>
